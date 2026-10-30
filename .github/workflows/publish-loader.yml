@@ -1,0 +1,30 @@
+name: Publish compiled iOS loader to repository
+on:
+  push:
+    paths:
+      - ".github/workflows/publish-loader.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compile-and-publish:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and encode dylib
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          xcrun clang -arch arm64 -isysroot "$SDK" -miphoneos-version-min=15.0 -dynamiclib -O2 -fvisibility=hidden \
+            -Wl,-install_name,@executable_path/Frameworks/DeltaAfterJoin.dylib \
+            -o DeltaAfterJoin.dylib src/DeltaAfterJoin.c
+          mkdir -p build
+          base64 < DeltaAfterJoin.dylib | tr -d '\n' > build/DeltaAfterJoin.dylib.b64
+          echo >> build/DeltaAfterJoin.dylib.b64
+          file DeltaAfterJoin.dylib
+      - name: Save binary as base64 text in test repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build/DeltaAfterJoin.dylib.b64
+          git commit -m "Build iOS game-join loader" || exit 0
+          git push
