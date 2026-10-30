@@ -1,0 +1,24 @@
+name: Build DeltaAfterJoin for iOS
+on:
+  push:
+    paths:
+      - ".github/workflows/build-loader.yml"
+      - "src/DeltaAfterJoin.c"
+  workflow_dispatch:
+jobs:
+  compile:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile native iOS ARM64 dylib
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          xcrun clang -arch arm64 -isysroot "$SDK" -miphoneos-version-min=15.0 -dynamiclib -O2 -fvisibility=hidden \
+            -Wl,-install_name,@executable_path/Frameworks/DeltaAfterJoin.dylib \
+            -o DeltaAfterJoin.dylib src/DeltaAfterJoin.c
+          file DeltaAfterJoin.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-game-join-loader
+          path: DeltaAfterJoin.dylib
+          retention-days: 7
